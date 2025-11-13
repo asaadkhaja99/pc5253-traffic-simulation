@@ -165,3 +165,5 @@ print(f"  Max velocity: {v_max}")
 print(f"  Slowdown probability: {p_slow}")
 print(f"\nThe diagonal black bands in the space-time diagram show")
 print(f"traffic jams propagating backwards (upstream) through traffic!")
+
+
