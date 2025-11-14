@@ -1,145 +1,216 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle
 
 class NagelSchreckenberg:
-    def __init__(self, length=100, num_cars=35, v_max=5, p_slow=0.3):
+    def __init__(self, length=100, num_cars=35, v_max=5, p_m=0.3):
         """
-        Initialize Nagel-Schreckenberg traffic model
+        Initialize Nagel-Schreckenberg traffic model following Algorithm 1
         
         Parameters:
         - length: road length (number of cells)
         - num_cars: number of cars on the road
         - v_max: maximum velocity
-        - p_slow: probability of random slowdown
+        - p_m: probability of random slowdown (p_m in the algorithm)
         """
         self.length = length
         self.num_cars = num_cars
         self.v_max = v_max
-        self.p_slow = p_slow
+        self.p_m = p_m
         
         # Initialize positions and velocities
         self.positions = np.sort(np.random.choice(length, num_cars, replace=False))
         self.velocities = np.random.randint(0, v_max + 1, num_cars)
         
     def step(self):
-        """Execute one time step of the model"""
-        # Step 1: Acceleration
-        self.velocities = np.minimum(self.velocities + 1, self.v_max)
+        """
+        Execute one time step following NaSch Algorithm 1
+        Process vehicles from last to first
+        """
+        old_positions = self.positions.copy()
+        new_velocities = self.velocities.copy()
         
-        # Step 2: Slowing down (due to other cars)
-        for i in range(self.num_cars):
-            # Find distance to next car
+        # Process from last to first vehicle
+        for i in range(self.num_cars - 1, -1, -1):
+            # Step 2: Acceleration - v_i^t = min[v_i^(t-1) + 1, v_max]
+            new_velocities[i] = min(new_velocities[i] + 1, self.v_max)
+            
+            # Step 3: Calculate distance to next car - d_i^t = x_(i-1)^(t-1) - x_i^(t-1) - 1
             next_car = (i + 1) % self.num_cars
-            if next_car == 0:
+            if next_car == 0:  # Wrap around (periodic boundary)
                 gap = (self.positions[next_car] + self.length) - self.positions[i] - 1
             else:
                 gap = self.positions[next_car] - self.positions[i] - 1
             
-            self.velocities[i] = min(self.velocities[i], gap)
+            # Step 5-6: Slowing down due to other cars - if v_i^t > d_i^t then v_i^t = d_i^t
+            if new_velocities[i] > gap:
+                new_velocities[i] = gap
+            
+            # Step 8-9: Randomization - if p <= p_m and v_i^(t-1) > 0 then v_i^t = v_i^(t-1) - 1
+            p = np.random.random()
+            if p <= self.p_m and new_velocities[i] > 0:
+                new_velocities[i] = new_velocities[i] - 1
         
-        # Step 3: Randomization (random slowing)
-        random_slow = np.random.random(self.num_cars) < self.p_slow
-        self.velocities[random_slow] = np.maximum(self.velocities[random_slow] - 1, 0)
+        # Update velocities
+        self.velocities = new_velocities
         
-        # Step 4: Car motion
+        # Step 11: Car motion - x_i^t = x_i^(t-1) + v_i^t
         self.positions = (self.positions + self.velocities) % self.length
         
-    def get_occupancy_map(self):
-        """Get binary occupancy map of the road (1 = car, 0 = empty)"""
-        road = np.zeros(self.length)
-        for pos in self.positions:
-            road[pos] = 1
-        return road
+        return old_positions, self.positions
+    
+    def measure_flow(self, measurement_point=0):
+        """
+        Measure flow: count cars passing a measurement point
+        Returns: number of cars that crossed the measurement point
+        """
+        old_pos, new_pos = self.step()
+        
+        # Count cars that crossed the measurement point
+        flow = 0
+        for i in range(self.num_cars):
+            # Check if car crossed the measurement point (accounting for periodic boundary)
+            if old_pos[i] < measurement_point <= new_pos[i]:
+                flow += 1
+            elif old_pos[i] > new_pos[i]:  # Car wrapped around
+                if old_pos[i] < measurement_point or new_pos[i] >= measurement_point:
+                    flow += 1
+        
+        return flow
+
+def generate_fundamental_diagram(road_length=100, v_max=5, p_m=0.3, 
+                                 num_runs=5, warmup_steps=200, measure_steps=500):
+    """
+    Generate fundamental diagram by simulating at different densities
+    
+    Parameters:
+    - road_length: length of the road
+    - v_max: maximum velocity
+    - p_m: probability of random slowdown
+    - num_runs: number of runs to average over for each density
+    - warmup_steps: steps to reach steady state
+    - measure_steps: steps to measure flow
+    
+    Returns:
+    - densities: array of densities
+    - flows: array of average flows
+    """
+    # Test different numbers of cars (densities)
+    car_numbers = range(1, road_length, 2)  # From 1 to road_length-1, step by 2
+    
+    densities = []
+    flows = []
+    
+    for num_cars in car_numbers:
+        density = num_cars / road_length
+        
+        # Run multiple simulations for this density
+        flow_measurements = []
+        for run in range(num_runs):
+            model = NagelSchreckenberg(road_length, num_cars, v_max, p_m)
+            
+            # Warmup period to reach steady state
+            for _ in range(warmup_steps):
+                model.step()
+            
+            # Measurement period
+            total_flow = 0
+            for _ in range(measure_steps):
+                flow = model.measure_flow()
+                total_flow += flow
+            
+            # Average flow per time step
+            avg_flow = total_flow / measure_steps
+            flow_measurements.append(avg_flow)
+        
+        # Store results
+        densities.append(density)
+        flows.append(np.mean(flow_measurements))
+    
+    return np.array(densities), np.array(flows)
+
+
+# =============================================================================
+# MAIN EXECUTION - Generate fundamental diagrams for different p_m values
+# =============================================================================
+
+print("="*60)
+print("GENERATING FUNDAMENTAL DIAGRAMS (NaSch Algorithm 1)")
+print("="*60)
 
 # Simulation parameters
 road_length = 100
-num_cars = 40
 v_max = 5
-p_slow = 0.35
-num_steps = 100
+p_m_values = [0.01, 0.1, 0.4, 0.5, 0.75]  # Different slowdown probabilities
+colors = ['#C41E3A', '#808080', '#FF8C00', '#32CD32', '#1E90FF']  # Red, Gray, Orange, Green, Blue
 
-print("Running simulation...")
-# Initialize model
-model = NagelSchreckenberg(road_length, num_cars, v_max, p_slow)
+# Create plot
+fig, ax = plt.subplots(figsize=(8, 6))
 
-# Store history for visualization
-history = []
-for step in range(num_steps + 1):  # +1 to include t=100
-    history.append(model.get_occupancy_map().copy())
-    if step < num_steps:
-        model.step()
-    if step % 20 == 0:
-        print(f"  Step {step}/{num_steps}")
+# Generate and plot for each p_m value
+for p_m, color in zip(p_m_values, colors):
+    print(f"\nGenerating for p = {p_m}...")
+    
+    densities, flows = generate_fundamental_diagram(
+        road_length=road_length, 
+        v_max=v_max, 
+        p_m=p_m,
+        num_runs=3,
+        warmup_steps=200,
+        measure_steps=500
+    )
+    
+    # Normalize flow by v_max to get J (dimensionless flow)
+    normalized_flows = flows / v_max
+    
+    # Plot
+    ax.plot(densities, normalized_flows, '-', linewidth=2.5, 
+            color=color, label=f'p={p_m}')
+    
+    max_flow = np.max(normalized_flows)
+    max_density = densities[np.argmax(normalized_flows)]
+    print(f"  Max J = {max_flow:.3f} at ρ = {max_density:.3f}")
 
-print("\n=== Creating Combined Figure ===")
+# Formatting
+ax.set_xlabel('ρ', fontsize=20, fontweight='bold')
+ax.set_ylabel('J', fontsize=20, fontweight='bold', rotation=0, labelpad=15)
+ax.set_xlim(0, 1.0)
+ax.set_ylim(0, 1.0)
+ax.grid(True, alpha=0.3, linestyle='-', linewidth=0.5)
+ax.legend(fontsize=14, loc='upper right', frameon=True, fancybox=False, 
+          edgecolor='black')
 
-# Create figure with two subplots
-fig, axes = plt.subplots(
-    1, 2, figsize=(10,4),
-    gridspec_kw={'width_ratios': [1.5, 0.8]},  # left:narrow, right:wide
-    constrained_layout=True
-)
+# Set tick parameters
+ax.tick_params(axis='both', which='major', labelsize=12)
 
-# Panel a) - Emergence snapshots
-ax1 = axes[0]
-time_points = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
-num_snapshots = len(time_points)
-
-
-cell_h   = 1.0          # each row's cell height
-line_gap = 2.5         # vertical gap between rows (in cell units)
-
-for idx, t in enumerate(time_points):
-    road_data = history[t]
-    # step size per row = cell height + gap
-    y_offset = (num_snapshots - idx - 1) * (cell_h + line_gap)
-
-    for pos in range(road_length):
-        fc = 'black' if road_data[pos] > 0 else 'white'
-        ax1.add_patch(Rectangle((pos, y_offset), 1, cell_h,
-                                facecolor=fc, edgecolor='lightgray', linewidth=0.3))
-    ax1.text(-0.5, y_offset + cell_h/2, f'{t}', color='red', fontsize=12, va='center', ha='right')
-
-total_height = num_snapshots * (cell_h + line_gap) - line_gap
-ax1.set_ylim(-0.5, total_height + 0.5)
-ax1.set_xlim(-8, road_length + 1)
-
-ax1.set_xlabel('Position x', color='blue', fontsize=14)
-ax1.set_title('a) Traffic Jam Emergence', fontsize=14, fontweight='bold', loc='left')
-ax1.set_yticks([])
-# ax1.set_aspect('equal')
-
-# Panel b) - Space-time diagram
-ax2 = axes[1]
-space_time = np.array(history)
-
-ax2.imshow(space_time, aspect='auto', cmap='binary', origin='lower', 
-          interpolation='nearest')
-
-ax2.set_xlabel('Position x', fontsize=14, color='blue')
-ax2.set_ylabel('Time t', fontsize=14, color='red')
-ax2.set_title('b) Back-Propagation of Jam', fontsize=14, fontweight='bold', loc='left')
-
-# Add arrow annotations
-ax2.annotate('', xy=(road_length-5, -3), xytext=(5, -3),
-            arrowprops=dict(arrowstyle='->', color='blue', lw=2))
-ax2.annotate('', xy=(-5, num_steps-5), xytext=(-5, 5),
-            arrowprops=dict(arrowstyle='->', color='red', lw=2))
+# Make the plot look cleaner
+ax.spines['top'].set_visible(True)
+ax.spines['right'].set_visible(True)
+ax.spines['left'].set_linewidth(1.5)
+ax.spines['bottom'].set_linewidth(1.5)
+ax.spines['top'].set_linewidth(1.5)
+ax.spines['right'].set_linewidth(1.5)
 
 plt.tight_layout()
-plt.savefig('traffic_combined_figure.png', dpi=150, bbox_inches='tight', 
+plt.savefig('fundamental_diagram_nasch.png', dpi=150, bbox_inches='tight', 
             facecolor='white')
-print("✓ Combined figure saved as 'traffic_combined_figure.png'")
+print("\n" + "="*60)
+print("✓ Fundamental diagram saved as 'fundamental_diagram_nasch.png'")
+print("="*60)
+# plt.show()
 
-print("\n" + "="*50)
-print("VISUALIZATION COMPLETE!")
-print("="*50)
-print(f"\nGenerated file:")
-print(f"  traffic_combined_figure.png - Two-panel figure")
-print(f"\nSimulation parameters:")
-print(f"  Road length: {road_length} cells")
-print(f"  Number of cars: {num_cars}")
-print(f"  Density: {num_cars/road_length:.1%}")
-print(f"  Max velocity: {v_max}")
-print(f"  Slowdown probability: {p_slow}")
+print("\n" + "="*60)
+print("ALGORITHM DETAILS")
+print("="*60)
+print("\nNaSch Algorithm implemented:")
+print("1. Process vehicles from LAST to FIRST")
+print("2. Acceleration: v_i^t = min[v_i^(t-1) + 1, v_max]")
+print("3. Calculate gap: d_i^t = x_(i-1)^(t-1) - x_i^(t-1) - 1")
+print("4. Generate random p ∈ [0, 1]")
+print("5-6. Slowing down: if v_i^t > d_i^t then v_i^t = d_i^t")
+print("7-9. Randomization: if p ≤ p_m and v_i^(t-1) > 0 then v_i^t = v_i^(t-1) - 1")
+print("10. Position update: x_i^t = x_i^(t-1) + v_i^t")
+print("\nKey observations:")
+print("- Lower p_m (less randomness) → higher maximum flow")
+print("- p_m=0.01 shows nearly deterministic behavior with sharp peak")
+print("- Higher p_m (more randomness) → smoother curves, lower capacity")
+print("- All curves show free flow → congested transition")
