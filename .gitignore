@@ -210,5 +210,5 @@ __marimo__/
 cache/
 data/
 output/
-*.DS_Store
+.DS_Store
 uv.lock
