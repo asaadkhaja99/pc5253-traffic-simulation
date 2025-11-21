@@ -14,6 +14,10 @@ USAGE:
 
 OUTPUT:
     idm_hysteresis_cycle.png - High-resolution static figure
+
+Note: AI Tools:
+Claude code was used to assist with the implementation of this script. 
+All final content was reviewed and edited to ensure accuracy.
 """
 
 import numpy as np

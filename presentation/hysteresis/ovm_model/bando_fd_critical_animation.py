@@ -27,6 +27,10 @@ USAGE:
 
 CONFIGURATION:
     Edit CONFIG dictionary at bottom to customize parameters
+
+Note: AI Tools:
+Claude code was used to assist with the implementation of this script. 
+All final content was reviewed and edited to ensure accuracy.
 """
 
 import numpy as np
