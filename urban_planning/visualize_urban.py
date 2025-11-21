@@ -91,7 +91,7 @@ def plot_paya_lebar_comparison(
              label='With Incident', color='#e74c3c', linewidth=2.5, linestyle='--')
     ax2.set_xlabel('Time (minutes)', fontsize=12, fontweight='bold')
     ax2.set_ylabel('Queue Length (vehicles)', fontsize=12, fontweight='bold')
-    ax2.set_title('Queue Size Over Time (Othman et al.: v < 5 km/h)', fontsize=14, fontweight='bold', pad=15)
+    ax2.set_title('Queue Size Over Time', fontsize=14, fontweight='bold', pad=15)
     ax2.legend(fontsize=11, loc='upper right')
     ax2.grid(True, alpha=0.3, linestyle='--')
     ax2.set_xlim(left=0)
@@ -106,7 +106,7 @@ def plot_paya_lebar_comparison(
              label='With Incident', color='#e74c3c', linewidth=2.5, linestyle='--')
     ax3.set_xlabel('Time (minutes)', fontsize=12, fontweight='bold')
     ax3.set_ylabel('Congested Roads (count)', fontsize=12, fontweight='bold')
-    ax3.set_title('Queue Spillback Effect: Congested Roads Over Time', fontsize=14, fontweight='bold', pad=15)
+    ax3.set_title('Congested Roads Over Time', fontsize=14, fontweight='bold', pad=15)
     ax3.legend(fontsize=11, loc='upper right')
     ax3.grid(True, alpha=0.3, linestyle='--')
     ax3.set_xlim(left=0)
@@ -146,14 +146,15 @@ def plot_paya_lebar_comparison(
 
     bars_delay = ax1.bar(labels, delays, color=colors_delay, alpha=0.8, edgecolor='black', linewidth=2)
     ax1.set_ylabel('Total Delay (vehicle-minutes)', fontsize=13, fontweight='bold')
-    ax1.set_title('Delay Comparison: No Incident vs With Incident', fontsize=15, fontweight='bold', pad=20)
+    ax1.set_title('Delay Comparison', fontsize=15, fontweight='bold', pad=20)
     ax1.grid(True, alpha=0.3, axis='y', linestyle='--')
+    ax1.tick_params(axis='both', labelsize=10)
 
-    # Add value labels on bars
+    # Add value labels on bars (without "min" suffix)
     for bar, delay in zip(bars_delay, delays):
         height = bar.get_height()
         ax1.text(bar.get_x() + bar.get_width()/2., height,
-                f'{delay:.1f}\nmin', ha='center', va='bottom',
+                f'{delay:.1f}', ha='center', va='bottom',
                 fontsize=12, fontweight='bold')
 
     # Add percentage increase annotation
@@ -164,41 +165,37 @@ def plot_paya_lebar_comparison(
                 bbox=dict(boxstyle='round,pad=0.5', facecolor='yellow', alpha=0.7),
                 transform=ax1.transData)
 
-    # RIGHT: Percentage Changes Bar Chart
-    baseline_mean_speed = df_baseline['mean_speed_kph'].mean()
-    closure_mean_speed = df_closure['mean_speed_kph'].mean()
-
-    baseline_completed = df_baseline['completed_trips'].iloc[-1]
-    closure_completed = df_closure['completed_trips'].iloc[-1]
-
+    # RIGHT: Peak Queue Length Comparison (Grouped Bar Chart)
     baseline_peak_queue = df_baseline['total_queue_length'].max()
     closure_peak_queue = df_closure['total_queue_length'].max()
 
-    # Calculate percentage changes
-    speed_change = ((closure_mean_speed - baseline_mean_speed) / baseline_mean_speed) * 100
-    completion_change = ((closure_completed - baseline_completed) / baseline_completed) * 100
-    if baseline_peak_queue > 0:
-        queue_change = ((closure_peak_queue - baseline_peak_queue) / baseline_peak_queue) * 100
-    else:
-        queue_change = closure_peak_queue  # Absolute value if baseline is 0
+    # Prepare data for grouped bar chart (only Peak Queue Length)
+    labels = ['Peak Queue Length']
+    baseline_values = [baseline_peak_queue]
+    incident_values = [closure_peak_queue]
 
-    # Bar chart
-    metrics = ['Mean Speed', 'Completed\nTrips', 'Peak Queue\nLength']
-    changes = [speed_change, completion_change, queue_change]
-    colors_change = ['#e74c3c' if x < 0 else '#2ecc71' for x in changes]
+    x = np.arange(len(labels))
+    width = 0.35
 
-    bars = ax2.bar(metrics, changes, color=colors_change, alpha=0.8, edgecolor='black', linewidth=1.5)
-    ax2.axhline(0, color='black', linewidth=1, linestyle='-')
-    ax2.set_ylabel('Change (%)', fontsize=13, fontweight='bold')
-    ax2.set_title('Incident Impact on Traffic Metrics', fontsize=15, fontweight='bold', pad=20)
+    bars1 = ax2.bar(x - width/2, baseline_values, width, label='Baseline',
+                    color='#2ecc71', alpha=0.8, edgecolor='black', linewidth=1.5)
+    bars2 = ax2.bar(x + width/2, incident_values, width, label='With Incident',
+                    color='#e74c3c', alpha=0.8, edgecolor='black', linewidth=1.5)
+
+    ax2.set_ylabel('Queue Length (vehicles)', fontsize=13, fontweight='bold')
+    ax2.set_title('Peak Queue Length Comparison', fontsize=15, fontweight='bold', pad=20)
+    ax2.set_xticks(x)
+    ax2.set_xticklabels(labels, fontsize=10)
     ax2.grid(True, alpha=0.3, axis='y', linestyle='--')
+    ax2.tick_params(axis='y', labelsize=10)
 
-    # Add value labels
-    for bar, change in zip(bars, changes):
-        height = bar.get_height()
-        ax2.text(bar.get_x() + bar.get_width()/2., height,
-                f'{change:+.1f}%', ha='center', va='bottom' if height >= 0 else 'top',
-                fontsize=12, fontweight='bold')
+    # Add value labels on bars
+    for bars in [bars1, bars2]:
+        for bar in bars:
+            height = bar.get_height()
+            ax2.text(bar.get_x() + bar.get_width()/2., height,
+                    f'{height:.1f}', ha='center', va='bottom',
+                    fontsize=10, fontweight='bold')
 
     plt.tight_layout()
     output_file = output_dir / 'paya_lebar_impact.png'
