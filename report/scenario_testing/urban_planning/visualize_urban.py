@@ -3,8 +3,6 @@ Urban Planning Visualization
 
 Generates visualizations for urban planning scenarios:
 1. Paya Lebar: Queue spillback, congestion comparison
-2. PIE: Rat-running analysis, residential road usage
-3. Comparative plots for both scenarios
 """
 
 import pandas as pd
@@ -204,72 +202,17 @@ def plot_paya_lebar_comparison(
     plt.close()
 
 
-def visualize_all_urban_scenarios(
-    paya_lebar_baseline,
-    paya_lebar_closure,
-    pie_baseline=None,  # Deprecated, PIE scenario removed
-    pie_closure=None,
-    pie_baseline_ratrun=None,
-    pie_closure_ratrun=None,
-    output_dir="output/urban_planning"
-):
-    """
-    Generate Paya Lebar urban planning visualizations.
-
-    Args:
-        paya_lebar_baseline: Path to Paya Lebar baseline CSV
-        paya_lebar_closure: Path to Paya Lebar closure CSV
-        pie_baseline: Deprecated (PIE scenario removed)
-        pie_closure: Deprecated (PIE scenario removed)
-        pie_baseline_ratrun: Deprecated (PIE scenario removed)
-        pie_closure_ratrun: Deprecated (PIE scenario removed)
-        output_dir: Directory to save plots
-    """
-    print("=" * 80)
-    print("URBAN PLANNING VISUALIZATION SUITE")
-    print("=" * 80)
-
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    # Paya Lebar visualizations
-    if Path(paya_lebar_baseline).exists() and Path(paya_lebar_closure).exists():
-        plot_paya_lebar_comparison(
-            paya_lebar_baseline,
-            paya_lebar_closure,
-            output_dir
-        )
-    else:
-        print("\nWarning: Paya Lebar data files not found. Skipping Paya Lebar plots.")
-
-    # PIE scenario removed - skip
-
-    print("\n" + "=" * 80)
-    print("VISUALIZATION COMPLETE")
-    print("=" * 80)
-    print(f"All plots saved to: {output_dir}")
-    print("=" * 80)
-
 
 if __name__ == '__main__':
     # Default paths
-    OUTPUT_DIR = Path(__file__).parent.parent / "output" / "urban_planning"
-
+    OUTPUT_DIR = Path(__file__).parent.parent.parent / "output" / "urban_planning"
+    
     PAYA_LEBAR_BASELINE = OUTPUT_DIR / "paya_lebar_baseline.csv"
     PAYA_LEBAR_CLOSURE = OUTPUT_DIR / "paya_lebar_closure.csv"
-
-    PIE_BASELINE = OUTPUT_DIR / "pie_baseline.csv"
-    PIE_CLOSURE = OUTPUT_DIR / "pie_closure.csv"
-    PIE_BASELINE_RATRUN = OUTPUT_DIR / "pie_baseline_ratrunning.csv"
-    PIE_CLOSURE_RATRUN = OUTPUT_DIR / "pie_closure_ratrunning.csv"
-
-    # Generate visualizations
-    visualize_all_urban_scenarios(
-        paya_lebar_baseline=PAYA_LEBAR_BASELINE,
-        paya_lebar_closure=PAYA_LEBAR_CLOSURE,
-        pie_baseline=PIE_BASELINE,
-        pie_closure=PIE_CLOSURE,
-        pie_baseline_ratrun=PIE_BASELINE_RATRUN,
-        pie_closure_ratrun=PIE_CLOSURE_RATRUN,
+    
+    # Generate Paya Lebar visualizations
+    plot_paya_lebar_comparison(
+        baseline_file=PAYA_LEBAR_BASELINE,
+        closure_file=PAYA_LEBAR_CLOSURE,
         output_dir=OUTPUT_DIR
     )

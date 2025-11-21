@@ -3,12 +3,6 @@ Urban Planning Simulation Base Module
 
 Extends the evacuation model framework for urban planning scenarios:
 1. Localized incidents (lane closures, accidents)
-2. Long-term disruptions (road closures, construction)
-
-Focus on:
-- Queue spillback from bottlenecks
-- Rat-running behavior (diversion to residential roads)
-- Network resilience to localized disruptions
 """
 
 import numpy as np

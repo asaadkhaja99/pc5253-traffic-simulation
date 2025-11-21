@@ -4,7 +4,7 @@ Master Script for Urban Planning Study
 Runs Paya Lebar localized incident scenario with IDM:
 - Lane closure near MRT junction
 - IDM with Gaussian bottleneck factor (Eq. 17)
-- Queue and delay metrics (Othman et al. methodology)
+- Queue and delay metrics
 
 USAGE:
     python run_urban_study.py [--quick]
