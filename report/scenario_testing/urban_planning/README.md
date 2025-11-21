@@ -1,322 +1,319 @@
-# Urban Planning Simulation
+# Urban Planning Module
 
-Agent-based models for testing network resilience to localized disruptions and long-term closures. Demonstrates ABM utility for urban planning decisions by modeling:
+Agent-based simulation using the Intelligent Driver Model (IDM) with Gaussian bottleneck on Singapore's road network.
 
-1. **Localized Incidents**: Queue spillback from lane closures (Paya Lebar case study)
-2. **Long-Term Disruptions**: Rat-running behavior from major road closures (PIE case study)
+---
 
 ## Overview
 
-While evacuation scenarios test network-wide demand, urban planning scenarios focus on:
-- **Localized disruptions**: Common incidents (accidents, construction) affecting specific road segments
-- **Congestion propagation**: How bottlenecks create queue spillback
-- **Emergent behavior**: Rat-running (drivers diverting to residential roads)
-- **Network resilience**: System adaptation to disruptions
+This module implements an urban planning scenario for Singapore's Paya Lebar area, testing network performance under localized disruptions.
 
-### Scenarios
+---
 
-**1. Paya Lebar Localized Incident**
-- Replicates methodology from Othman et al. (2023) SUMO study
-- Partial lane closure near Paya Lebar MRT interchange
-- Validates ABM's ability to reproduce realistic queue spillback
-- **Output**: Congestion metrics, queue lengths, trip time comparison
+## Module Structure
 
-**2. PIE Long-Term Disruption**
-- Simulates 1km closure on Pan-Island Expressway (PIE)
-- Tests emergence of rat-running behavior
-- Identifies residential roads receiving diverted traffic
-- **Output**: Rat-running statistics, residential road usage analysis
+```
+urban_planning/
+├── __init__.py                  # Module initialization
+├── urban_base.py                # Base urban planning model with disruption support
+├── urban_road_idm.py            # IDM road agent with Gaussian bottleneck implementation
+├── scenario_paya_lebar.py       # Paya Lebar localized incident scenario
+├── create_scenario_maps.py      # Generate scenario visualization maps
+├── visualize_urban.py           # Plotting and analysis visualizations
+├── plot_utils.py                # Shared plotting utilities
+├── run_urban_study.py           # Main execution script
+└── README.md                    # This file
+```
 
-## Architecture
+---
+
+## File Descriptions
 
 ### Core Components
 
-**[urban_base.py](urban_base.py)**: Base framework
-- `UrbanPlanningModel`: Mesa model for urban traffic
-- `UrbanRoadAgent`: Road with disruption support (lane/road closures)
-- `UrbanVehicleAgent`: Commuter vehicles with OD pairs
-- `DisruptionConfig`: Configuration for network disruptions
+#### `urban_base.py`
+Base framework for urban planning simulations containing:
+- **`UrbanPlanningConfig`**: Configuration dataclass with network bounds and simulation parameters
+- **`DisruptionConfig`**: Configuration for network disruptions (Gaussian bottleneck parameters)
+- **`UrbanRoadAgent`**: Road segment agent with disruption support
+- **`UrbanVehicleAgent`**: Vehicle agent with origin-destination routing
+- **`UrbanPlanningModel`**: Main Mesa model class
 
-**[scenario_paya_lebar.py](scenario_paya_lebar.py)**: Localized incident
-- Lane closure near Paya Lebar MRT
+**Key Classes:**
+```python
+@dataclass
+class UrbanPlanningConfig:
+    # Network bounds, vehicle counts, IDM parameters
+
+@dataclass
+class DisruptionConfig:
+    # Gaussian bottleneck parameters (ε, σ, position)
+
+class UrbanRoadAgent(EvacuationRoadAgent):
+    # Road segment with IDM and disruption support
+
+class UrbanPlanningModel(EvacuationModel):
+    # Main simulation model
+```
+
+#### `urban_road_idm.py`
+IDM implementation with Gaussian bottleneck factor:
+- **`gaussian_bottleneck_factor()`**: Computes B(x) = 1 - ε·exp[-(x-x_incident)²/(2σ²)]
+- **`IDMRoadAgentWithBottleneck`**: Road agent with IDM dynamics and bottleneck
+- **`idm_acceleration()`**: Intelligent Driver Model acceleration calculation
+
+**Gaussian Bottleneck Equation (Eq. 17):**
+```
+B(x) = 1 - ε·exp[-(x-x_incident)²/(2σ²)]
+
+where:
+  ε = bottleneck strength (0-1), 0.9 = 90% capacity reduction
+  σ = spatial spread (meters), controls bottleneck width
+  x = position along road (meters)
+  x_incident = bottleneck center position
+```
+
+#### `scenario_paya_lebar.py`
+Paya Lebar localized incident scenario:
+- Lane closure near Paya Lebar MRT interchange
+- Baseline vs. incident comparison
 - Queue spillback analysis
-- Baseline vs. closure comparison
+- Forced northbound flow through bottleneck zone
 
-**[scenario_pie_closure.py](scenario_pie_closure.py)**: Long-term disruption
-- PIE section closure (1km)
-- Rat-running detection
-- Residential road usage analysis
+**Usage:**
+```python
+from scenario_paya_lebar import run_paya_lebar_scenario
 
-**[run_urban_study.py](run_urban_study.py)**: Master orchestrator
-- Runs both scenarios with baselines
-- Generates comparative analysis
+# Run baseline
+run_paya_lebar_scenario(
+    num_vehicles=800,
+    apply_gaussian_bottleneck=False,  # Baseline
+    seed=42,
+    output_file="output/paya_lebar_baseline.csv"
+)
 
-## Installation
+# Run with incident
+run_paya_lebar_scenario(
+    num_vehicles=800,
+    apply_gaussian_bottleneck=True,   # With bottleneck
+    seed=42,
+    output_file="output/paya_lebar_closure.csv"
+)
+```
 
-Same dependencies as evacuation model (already installed):
+#### `visualize_urban.py`
+Visualization and analysis tools:
+- **`setup_plot_style()`**: Consistent plot styling
+- **`plot_paya_lebar_comparison()`**: Creates multi-panel comparison plots
+  - Trip completion comparison
+  - Queue length over time
+  - Congested roads count
+  - Network speed degradation
+  - Delay comparison bar chart
+  - Peak queue length comparison
 
+**Usage:**
+```python
+from visualize_urban import plot_paya_lebar_comparison
+
+plot_paya_lebar_comparison(
+    baseline_file="output/paya_lebar_baseline.csv",
+    closure_file="output/paya_lebar_closure.csv",
+    output_dir="output/urban_planning"
+)
+```
+
+#### `create_scenario_maps.py`
+Generates spatial visualization maps:
+- Road network with hierarchy (major/secondary/residential)
+- Origin and destination zones
+- Paya Lebar MRT junction location
+- Gaussian bottleneck zone visualization
+
+**Usage:**
+```bash
+uv run python create_scenario_maps.py
+```
+
+#### `plot_utils.py`
+Shared plotting utilities for consistent visualization styling:
+- **`setup_high_res_plot_style()`**: High-resolution plot configuration
+- **`COLORS`**: Consistent color scheme across plots
+
+### Execution Scripts
+
+#### `run_urban_study.py`
+Main entry point for running the Paya Lebar scenario with baseline comparison.
+
+**Usage:**
+```bash
+uv run python run_urban_study.py
+```
+
+---
+
+## How to Run
+
+### Prerequisites
+
+Ensure project dependencies are installed:
 ```bash
 cd /path/to/pc5253-traffic-simulation
 uv sync
 ```
 
-## Usage
+### Running the Paya Lebar Scenario
 
-### Quick Start
-
-Run both scenarios with default settings:
-
+Navigate to the urban_planning directory:
 ```bash
-cd urban_planning
+cd report/scenario_testing/urban_planning
+```
+
+**Run Full Study (Baseline + Incident):**
+```bash
 uv run python run_urban_study.py
 ```
 
 This runs:
-1. Paya Lebar baseline + lane closure (800 vehicles each)
-2. PIE baseline + road closure (1500 vehicles each)
+1. Paya Lebar baseline (no bottleneck)
+2. Paya Lebar with Gaussian bottleneck (ε=0.9)
 
-Results saved to: `/output/urban_planning/`
+Results saved to: `output/urban_planning/`
 
-### Quick Test
-
-Reduced vehicle counts for faster testing (~10-15 min):
-
+**Run Individual Scenario:**
 ```bash
-uv run python run_urban_study.py --quick
-```
-
-### Individual Scenarios
-
-```bash
-# Paya Lebar only
 uv run python scenario_paya_lebar.py
-
-# PIE only
-uv run python scenario_pie_closure.py
 ```
 
-### Custom Configuration
-
+**Generate Visualization Maps:**
 ```bash
-# Custom vehicle counts
-uv run python run_urban_study.py --paya-lebar-vehicles 1000 --pie-vehicles 2000
-
-# Custom seed
-uv run python run_urban_study.py --seed 123
+uv run python create_scenario_maps.py
 ```
 
-## Configuration
+**Generate Analysis Plots:**
+```bash
+uv run python visualize_urban.py
+```
 
-### Paya Lebar Scenario
+---
 
-Location: East Singapore, near Paya Lebar MRT
-- **Network bounds**: 1.305°N - 1.325°N, 103.885°E - 103.905°E
-- **Vehicles**: 800 (default)
-- **Disruption**: 50% capacity reduction on major road near MRT
-- **Duration**: Permanent (full simulation)
-- **Focus**: Queue spillback, trip time increase
+## Model Parameters
 
-Modify in [scenario_paya_lebar.py](scenario_paya_lebar.py:34-51).
+### Network Configuration
 
-### PIE Scenario
+| Parameter | Default Value | Description |
+|-----------|---------------|-------------|
+| `bbox_north` | 1.3280 | Northern boundary (latitude) |
+| `bbox_south` | 1.3070 | Southern boundary (latitude) |
+| `bbox_east` | 103.9040 | Eastern boundary (longitude) |
+| `bbox_west` | 103.8810 | Western boundary (longitude) |
 
-Location: Wider area covering PIE section
-- **Network bounds**: 1.310°N - 1.360°N, 103.830°E - 103.890°E
-- **Vehicles**: 1500 (default)
-- **Disruption**: Complete closure of 1km PIE section
-- **Duration**: Permanent (long-term construction)
-- **Focus**: Rat-running, residential road usage
+**Coverage Area**: Paya Lebar MRT vicinity (~2.1km × 2.3km)
 
-Modify in [scenario_pie_closure.py](scenario_pie_closure.py:40-56).
+### Simulation Parameters
 
-## Outputs
+| Parameter | Default Value | Description |
+|-----------|---------------|-------------|
+| `num_vehicles` | 800 | Number of vehicles (attempted) |
+| `delta_t` | 1.0 seconds | Time step duration |
+| `max_steps` | 7200 | Maximum simulation steps (2 hours) |
+| `seed` | 42 | Random seed for reproducibility |
+| `use_idm` | True | Use IDM instead of NaSch |
 
-All saved to `<project_root>/output/urban_planning/`:
+### IDM Parameters
 
-### Paya Lebar
+| Parameter | Default Value | Description |
+|-----------|---------------|-------------|
+| `idm_a` | 1.0 m/s² | Maximum acceleration |
+| `idm_b` | 1.5 m/s² | Comfortable deceleration |
+| `idm_s0` | 2.0 m | Minimum gap |
+| `idm_T` | 1.5 s | Safe time headway |
+| `idm_delta` | 4.0 | Acceleration exponent |
 
-**CSV Files**:
-- `paya_lebar_baseline.csv` - Normal traffic (no closure)
-- `paya_lebar_closure.csv` - With lane closure
+### Gaussian Bottleneck Parameters
 
-Columns: `time_step`, `completed_trips`, `network_flow`, `mean_speed_kph`, `congested_roads`
+| Parameter | Default Value | Description |
+|-----------|---------------|-------------|
+| `bottleneck_epsilon` (ε) | 0.9 | Bottleneck strength (90% capacity reduction) |
+| `bottleneck_sigma` (σ) | 50.0 m | Spatial spread of bottleneck |
+| `incident_position_m` | None | Position along road (None = midpoint) |
 
-### PIE
+**Gaussian Bottleneck Formula:**
+```
+B(x) = 1 - ε·exp[-(x - x_incident)²/(2σ²)]
 
-**CSV Files**:
-- `pie_baseline.csv` - Normal traffic
-- `pie_closure.csv` - With PIE closure
-- `pie_baseline_ratrunning.csv` - Residential road usage (baseline)
-- `pie_closure_ratrunning.csv` - Residential road usage (with closure)
+Effect on desired velocity:
+v_desired(x) = v_max · B(x)
+```
 
-Rat-running CSV columns: `edge`, `throughput`, `total_passed`, `max_queue`, `highway_type`
+### Origin-Destination Zones
+
+**Origin Zone (South of Incident):**
+- Latitude: 1.3130 - 1.3160
+- Longitude: 103.891 - 103.896
+- Distance from MRT: 350-650m south
+
+**Destination Zone (North of Incident):**
+- Latitude: 1.3190 - 1.3220
+- Longitude: 103.891 - 103.896
+- Distance from MRT: 350-650m north
+
+**Paya Lebar MRT Junction**: 1.31765°N, 103.89271°E
+
+---
 
 ## Metrics
 
-### Paya Lebar (Queue Spillback)
+### Primary Metrics
 
-**Primary Metrics**:
-- **Mean trip time**: Average travel time per vehicle
-- **Peak congestion**: Maximum number of congested roads simultaneously
-- **Queue length**: Number of vehicles waiting at bottleneck
+1. **Delay**
+   - Sum of all vehicle delays (vehicle-minutes)
+   - Comparison: Baseline vs. Incident
+   - Shows aggregate impact of bottleneck
 
-**Expected Findings**:
-- Lane closure increases mean trip time by 20-40%
-- Queue spillback creates congestion on upstream roads
-- Peak congestion occurs shortly after disruption starts
+2. **Queue Length**
+   - Number of vehicles queued at bottleneck
+   - Tracked over time
+   - Peak queue length comparison
 
-### PIE (Rat-Running)
+3. **Completed Trips**
+   - Cumulative vehicles completing journeys
+   - Completion rate comparison
 
-**Primary Metrics**:
-- **Residential fraction**: % of total traffic using residential roads
-- **Top rat-run roads**: Residential roads with highest throughput
-- **Throughput comparison**: Baseline vs. closure
+4. **Mean Network Speed**
+   - Average vehicle speed across all roads (km/h)
+   - Indicates overall network performance
 
-**Expected Findings**:
-- PIE closure increases residential fraction by 10-30 percentage points
-- Specific residential roads become "shortcut" routes
-- Primary road network shows reduced flow, residential roads show increased flow
+5. **Congested Roads Count**
+   - Number of roads with degraded flow
+   - Shows congestion propagation
 
-### Comparison
+---
 
-| Metric | Baseline | Disruption | Change |
-|--------|----------|------------|--------|
-| **Paya Lebar** ||||
-| Mean trip time | ~300s | ~400s | +33% |
-| Peak congestion | ~20 roads | ~50 roads | +150% |
-| Queue length | 0 | ~30 veh | - |
-| **PIE** ||||
-| Residential fraction | ~15% | ~35% | +20 pp |
-| Completed trips | ~95% | ~85% | -10% |
-| Mean speed | ~40 km/h | ~25 km/h | -38% |
+## Output Files
 
-## Technical Details
+All outputs are saved to `output/urban_planning/`:
 
-### Disruption Implementation
+### CSV Files (Time Series Data)
 
-**Lane Closure** (Paya Lebar):
-```python
-road.apply_lane_closure(
-    capacity_reduction=0.5,  # Remove 50% of capacity
-    start_time=0,
-    duration=None  # Permanent
-)
-```
+- `paya_lebar_baseline.csv` - Normal traffic (no bottleneck)
+- `paya_lebar_closure.csv` - With Gaussian bottleneck
 
-Reduces `num_cells` (road capacity) by 50%, forcing more vehicles into queue.
+**Columns:**
+- `time_step`: Simulation time (seconds)
+- `completed_trips`: Cumulative trips completed
+- `network_flow`: Vehicles per time step
+- `mean_speed_kph`: Average speed (km/h)
+- `congested_roads`: Count of congested roads
+- `total_queue_length`: Total vehicles in queues
+- `total_delay`: Cumulative delay (vehicle-seconds)
 
-**Road Closure** (PIE):
-```python
-road.apply_road_closure(
-    start_time=0,
-    duration=None  # Permanent
-)
-```
+### Visualization Outputs
 
-Sets `num_cells=0` and `is_blocked=True`, preventing any vehicle entry. Forces rerouting.
+- `paya_lebar_scenario_map.png` - Scenario setup map with O-D zones
+- `paya_lebar_comparison.png` - Multi-panel time series comparison
+- `paya_lebar_impact.png` - Delay and queue length bar charts
 
-### Rat-Running Detection
 
-Compares residential road throughput between baseline and disruption:
-
-```python
-def analyze_rat_running(model):
-    residential_throughput = sum(r.throughput for r in residential_roads)
-    primary_throughput = sum(r.throughput for r in primary_roads)
-    residential_fraction = residential_throughput / (residential_throughput + primary_throughput)
-    return residential_fraction
-```
-
-Increase in `residential_fraction` indicates rat-running behavior.
-
-### Queue Spillback
-
-Roads track entry queue length:
-
-```python
-class UrbanRoadAgent:
-    def __init__(self, ...):
-        self.entry_queue = deque()  # Vehicles waiting to enter
-        self.queue_length = 0
-
-    def step(self):
-        self.queue_length = len(self.entry_queue)
-```
-
-Queue builds when road capacity is exceeded (lane closure) or blocked (road closure).
-
-## Validation
-
-### Paya Lebar
-
-**Reference**: Othman et al. (2023) used SUMO to model Paya Lebar lane closure
-- Their findings: Queue spillback, increased trip times, congestion propagation
-- **Our validation**: Compare qualitative patterns (queue formation, congestion spread)
-- **Expected**: Similar congestion patterns, queue lengths proportional to capacity reduction
-
-### PIE
-
-**Speculative experiment** (no direct reference)
-- Goal: Test ABM's ability to capture emergent behavior
-- **Rat-running**: Known phenomenon in traffic engineering
-- **Expected**: Residential roads near PIE closure show increased usage
-
-## Troubleshooting
-
-### Problem: No disruption applied
-
-**Solution**: Check that affected edges exist in network. Run with `--quick` first to verify network loading.
-
-### Problem: No vehicles spawned
-
-**Cause**: Origin-destination pairs have no valid routes.
-
-**Solution**:
-- Ensure network bbox is large enough
-- Check that major nodes are identified (`model.major_nodes`)
-- Try larger network area
-
-### Problem: Simulation runs very slowly
-
-**Solutions**:
-- Use `--quick` flag
-- Reduce vehicle counts
-- Reduce simulation duration (edit `max_steps` in config)
-
-### Problem: No rat-running detected
-
-**Possible causes**:
-- Network too small (no residential alternatives)
-- Disruption not forcing rerouting (try longer closure)
-- Vehicles not reaching disrupted area
-
-**Solution**: Expand network bounds or increase closure length.
-
-## References
-
-### Localized Incidents
-
-Othman, N. B., et al. (2023). Agent-based traffic simulation for Paya Lebar region. (Citation needed - user to provide)
-
-### Rat-Running
-
-General traffic engineering concept:
-- Drivers seek shortcuts through residential neighborhoods
-- Caused by congestion on main routes
-- Common during construction/closures
-
-### ABM for Urban Planning
-
-(Citations needed - user to provide)
-
-## Future Enhancements
-
-1. **Dynamic Rerouting**: Agents update routes when encountering congestion
-2. **Time-Varying Demand**: Morning/evening peak patterns
-3. **Multiple Disruptions**: Compound effects
-4. **Traffic Signals**: Intersection delays
-5. **Validation Data**: Compare against real Paya Lebar traffic data
-
-## License
-
-Part of PC5253 Traffic Simulation project.
+## AI Tools
+Claude code was used to assist with the implementation of this scenario. All final content was reviewed and edited to ensure accuracy.
