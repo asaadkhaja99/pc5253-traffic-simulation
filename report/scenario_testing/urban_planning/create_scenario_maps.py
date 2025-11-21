@@ -63,8 +63,8 @@ def create_paya_lebar_map(output_path="output/urban_planning/paya_lebar_scenario
         return hw if hw else 'unknown'
     edges_gdf_wm['highway'] = edges_gdf_wm['highway'].apply(normalize_highway)
 
-    # Create figure - square aspect ratio for junction view
-    fig, ax = plt.subplots(figsize=(12, 12), facecolor='white')
+    # Create figure - square aspect ratio with space for bottom legend
+    fig, ax = plt.subplots(figsize=(14, 12), facecolor='white')
 
     # Plot roads first to establish axis limits
     print("Plotting road network...")
@@ -275,7 +275,7 @@ def create_paya_lebar_map(output_path="output/urban_planning/paya_lebar_scenario
         ax.set_ylim(junction_y - margin, junction_y + margin)
 
     # Add scale bar and title
-    ax.set_title('Paya Lebar Localized Incident - Zoned O-D Pairs\nIDM with Gaussian Bottleneck (ε=0.8, σ=50m)',
+    ax.set_title('Paya Lebar Localized Incident - Zoned O-D Pairs\nIDM with Gaussian Bottleneck (ε=0.9, σ=50m)',
                 fontweight='bold', pad=20, fontsize=22)
 
     # Create legend
@@ -284,7 +284,7 @@ def create_paya_lebar_map(output_path="output/urban_planning/paya_lebar_scenario
                   markersize=18, markeredgecolor='white', markeredgewidth=2,
                   label='Paya Lebar Junction', linestyle='None'),
         mpatches.Patch(facecolor='#e74c3c', edgecolor='#c0392b', alpha=0.2,
-                      linestyle='--', linewidth=2.5, label='Bottleneck Zone (ε=0.8)'),
+                      linestyle='--', linewidth=2.5, label='Bottleneck Zone (ε=0.9)'),
         mpatches.Patch(facecolor='#3498db', edgecolor='#3498db', alpha=0.1,
                       linestyle='--', linewidth=2.5, label=f'Origin Zone (SW, n={len(origin_nodes)})'),
         mpatches.Patch(facecolor='#27ae60', edgecolor='#27ae60', alpha=0.1,
@@ -297,8 +297,8 @@ def create_paya_lebar_map(output_path="output/urban_planning/paya_lebar_scenario
                   label='Destination Nodes', linestyle='None', alpha=0.8),
         mpatches.Patch(facecolor='#2c3e50', edgecolor='black', label='Major Roads', alpha=0.9),
     ]
-    ax.legend(handles=legend_elements, loc='lower right', fontsize=12, framealpha=0.95,
-             title='Localized Flow Zones', title_fontsize=13)
+    ax.legend(handles=legend_elements, loc='upper center', bbox_to_anchor=(0.5, -0.05),
+             ncol=3, fontsize=12, framealpha=0.95, title='Localized Flow Zones', title_fontsize=13)
 
     # Remove axis
     ax.set_axis_off()
