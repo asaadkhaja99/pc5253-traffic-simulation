@@ -205,3 +205,10 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Local artefacts
+cache/
+data/
+output/
+*.DS_Store
+uv.lock
