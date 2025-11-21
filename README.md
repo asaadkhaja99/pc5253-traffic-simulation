@@ -89,7 +89,7 @@ traffic network?
     │   │   │   ├── create_intervention_effectiveness.py  # Intervention plots
     │   │   │   ├── visualize_evacuation.py     # Main visualization
     │   │   │   └── visualize_spatial.py        # Spatial plots
-    │   │   └── docs/          # Documentation
+    │   │   └── README.md                       # Documentation
     │   │
     │   └── urban_planning/    # Urban planning scenario (Paya Lebar incident)
     │       ├── urban_base.py              # Base urban planning model
